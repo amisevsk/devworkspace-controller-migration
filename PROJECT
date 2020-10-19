@@ -1,0 +1,8 @@
+domain: devfile.io
+layout: go.kubebuilder.io/v2
+projectName: devworkspace-operator-migration
+repo: github.com/devfile/devworkspace-operator
+multigroup: true
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}
