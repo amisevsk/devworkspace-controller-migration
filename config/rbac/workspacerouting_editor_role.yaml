@@ -1,0 +1,24 @@
+# permissions for end users to edit workspaceroutings.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: workspacerouting-editor-role
+rules:
+- apiGroups:
+  - controller.devfile.io
+  resources:
+  - workspaceroutings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - controller.devfile.io
+  resources:
+  - workspaceroutings/status
+  verbs:
+  - get
