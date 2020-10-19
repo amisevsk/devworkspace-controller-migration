@@ -26,6 +26,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
+	controllercontroller "github.com/devfile/devworkspace-operator/controllers/controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -37,6 +40,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
+	utilruntime.Must(controllerv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -63,6 +67,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&controllercontroller.ComponentReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Component")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
