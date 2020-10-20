@@ -27,8 +27,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	workspacev1alpha1 "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
-	workspacev1alpha1 "github.com/devfile/devworkspace-operator/apis/workspace/v1alpha1"
 	controllercontroller "github.com/devfile/devworkspace-operator/controllers/controller"
 	workspacecontroller "github.com/devfile/devworkspace-operator/controllers/workspace"
 	// +kubebuilder:scaffold:imports

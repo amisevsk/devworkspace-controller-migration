@@ -13,6 +13,7 @@
 ## - Port over e2e tests.
 ## - Port over local running stuff.
 ## - Figure out which parts of local patching are still needed.
+## - Include getting devfile/api crds in manifests rule
 ###############
 
 SHELL := bash

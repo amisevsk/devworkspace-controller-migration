@@ -24,7 +24,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	workspacev1alpha1 "github.com/devfile/devworkspace-operator/apis/workspace/v1alpha1"
+	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 )
 
 // DevWorkspaceReconciler reconciles a DevWorkspace object
@@ -48,6 +48,6 @@ func (r *DevWorkspaceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 
 func (r *DevWorkspaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&workspacev1alpha1.DevWorkspace{}).
+		For(&devworkspace.DevWorkspace{}).
 		Complete(r)
 }
