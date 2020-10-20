@@ -1,3 +1,49 @@
+# Copyright (c) 2019-2020 Red Hat, Inc.
+# This program and the accompanying materials are made
+# available under the terms of the Eclipse Public License 2.0
+# which is available at https://www.eclipse.org/legal/epl-2.0/
+#
+# SPDX-License-Identifier: EPL-2.0
+#
+# Contributors:
+#   Red Hat, Inc. - initial API and implementation
+#
+
+#### TODOS ####
+## - Port over e2e tests.
+## - Port over local running stuff.
+## - Figure out which parts of local patching are still needed.
+###############
+
+SHELL := bash
+.SHELLFLAGS = -ec
+.ONESHELL:
+
+NAMESPACE ?= devworkspace-controller
+IMG ?= quay.io/devfile/devworkspace-controller:next
+TOOL ?= oc
+ROUTING_SUFFIX ?= 192.168.99.100.nip.io
+PULL_POLICY ?= Always
+WEBHOOK_ENABLED ?= true
+DEFAULT_ROUTING ?= basic
+ADMIN_CTX ?= ""
+REGISTRY_ENABLED ?= true
+DEVWORKSPACE_API_VERSION ?= v1alpha1
+
+#internal params
+INTERNAL_TMP_DIR=/tmp/devworkspace-controller
+BUMPED_KUBECONFIG=$(INTERNAL_TMP_DIR)/kubeconfig
+RELATED_IMAGES_FILE=$(INTERNAL_TMP_DIR)/environment
+
+# minikube handling
+ifeq ($(shell $(TOOL) config current-context),minikube)
+	ROUTING_SUFFIX := $(shell minikube ip).nip.io
+	TOOL := kubectl
+endif
+
+
+
+# Bootstrapped by Operator-SDK v1.1.0
 # Current Operator version
 VERSION ?= 0.0.1
 # Default bundle image tag
@@ -11,8 +57,6 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
-# Image URL to use all building/pushing image targets
-IMG ?= controller:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -25,59 +69,98 @@ endif
 
 all: manager
 
-# Run tests
+_print_vars:
+	@echo "Current env vars:"
+	@echo "    NAMESPACE=$(NAMESPACE)"
+	@echo "    IMG=$(IMG)"
+	@echo "    PULL_POLICY=$(PULL_POLICY)"
+	@echo "    ROUTING_SUFFIX=$(ROUTING_SUFFIX)"
+	@echo "    WEBHOOK_ENABLED=$(WEBHOOK_ENABLED)"
+	@echo "    DEFAULT_ROUTING=$(DEFAULT_ROUTING)"
+	@echo "    REGISTRY_ENABLED=$(REGISTRY_ENABLED)"
+	@echo "    DEVWORKSPACE_API_VERSION=$(DEVWORKSPACE_API_VERSION)"
+	@echo "    TOOL=$(TOOL)"
+
+##### Rules for dealing with devfile/api
+### update_devworkspace_api: update version of devworkspace crds in go.mod
+update_devworkspace_api:
+	go mod edit --require github.com/devfile/api@$(DEVWORKSPACE_API_VERSION)
+	go mod download
+	go mod tidy
+
+### update_devworkspace_crds: pull latest devworkspace CRDs to ./devworkspace-crds. Note: pulls master branch
+update_devworkspace_crds:
+	./update_devworkspace_crds.sh $(DEVWORKSPACE_API_VERSION)
+###### End rules for dealing with devfile/api
+
+### test: Run tests
 ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
 test: generate fmt vet manifests
 	mkdir -p $(ENVTEST_ASSETS_DIR)
 	test -f $(ENVTEST_ASSETS_DIR)/setup-envtest.sh || curl -sSLo $(ENVTEST_ASSETS_DIR)/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.6.3/hack/setup-envtest.sh
 	source $(ENVTEST_ASSETS_DIR)/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
 
-# Build manager binary
+### manager: Build manager binary
 manager: generate fmt vet
 	go build -o bin/manager main.go
 
-# Run against the configured Kubernetes cluster in ~/.kube/config
+### run: Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
 	go run ./main.go
 
-# Install CRDs into a cluster
-install: manifests kustomize
+### install: Install CRDs into a cluster
+install: manifests _kustomize
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
-# Uninstall CRDs from a cluster
-uninstall: manifests kustomize
+#### uninstall: Uninstall CRDs from a cluster
+uninstall: manifests _kustomize
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize
+### deploy: Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+deploy: manifests _kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
-# Generate manifests e.g. CRD, RBAC etc.
+### manifests Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
-# Run go fmt against code
+### fmt: Run go fmt against code
 fmt:
-	go fmt ./...
+ifneq ($(shell command -v goimports 2> /dev/null),)
+	find . -name '*.go' -exec goimports -w {} \;
+else
+	@echo "WARN: goimports is not installed -- formatting using go fmt instead."
+	@echo "      Please install goimports to ensure file imports are consistent."
+	go fmt -x ./...
+endif
 
-# Run go vet against code
+### fmt_license: ensure license header is set on all files
+fmt_license:
+ifneq ($(shell command -v addlicense 2> /dev/null),)
+	@echo 'addlicense -v -f license_header.txt **/*.go'
+	@addlicense -v -f license_header.txt $$(find . -name '*.go')
+else
+	$(error addlicense must be installed for this rule: go get -u github.com/google/addlicense)
+endif
+
+### vet: Run go vet against code
 vet:
 	go vet ./...
 
-# Generate code
+### generate: Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-# Build the docker image
+### docker-build: Build the docker image
 docker-build: test
 	docker build . -t ${IMG}
 
-# Push the docker image
+### docker-push: Push the docker image
 docker-push:
 	docker push ${IMG}
 
-# find or download controller-gen
+### controller-gen: find or download controller-gen
 # download controller-gen if necessary
 controller-gen:
 ifeq (, $(shell which controller-gen))
@@ -94,7 +177,7 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-kustomize:
+_kustomize:
 ifeq (, $(shell which kustomize))
 	@{ \
 	set -e ;\
@@ -121,3 +204,20 @@ bundle: manifests
 .PHONY: bundle-build
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+.PHONY: help
+### help: print this message
+help: Makefile
+	@echo 'Available rules:'
+	@sed -n 's/^### /    /p' $< | awk 'BEGIN { FS=":" } { printf "%-30s -%s\n", $$1, $$2 }'
+	@echo ''
+	@echo 'Supported environment variables:'
+	@echo '    IMG                        - Image used for controller'
+	@echo '    NAMESPACE                  - Namespace to use for deploying controller'
+	@echo '    TOOL                       - CLI tool for interfacing with the cluster: kubectl or oc; if oc is used, deployment is tailored to OpenShift, otherwise Kubernetes'
+	@echo '    ROUTING_SUFFIX             - Cluster routing suffix (e.g. $$(minikube ip).nip.io, apps-crc.testing)'
+	@echo '    PULL_POLICY                - Image pull policy for controller'
+	@echo '    WEBHOOK_ENABLED            - Whether webhooks should be enabled in the deployment'
+	@echo '    ADMIN_CTX                  - Kubectx entry that should be used during work with cluster. The current will be used if omitted'
+	@echo '    REGISTRY_ENABLED           - Whether the plugin registry should be deployed'
+	@echo '    DEVWORKSPACE_API_VERSION   - Branch or tag of the github.com/devfile/api to depend on. Defaults to master'
