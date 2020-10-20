@@ -1,56 +1,57 @@
-/*
-
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+//
+// Copyright (c) 2019-2020 Red Hat, Inc.
+// This program and the accompanying materials are made
+// available under the terms of the Eclipse Public License 2.0
+// which is available at https://www.eclipse.org/legal/epl-2.0/
+//
+// SPDX-License-Identifier: EPL-2.0
+//
+// Contributors:
+//   Red Hat, Inc. - initial API and implementation
+//
 
 package v1alpha1
 
 import (
+	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ComponentSpec defines the desired state of Component
-type ComponentSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of Component. Edit Component_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+// +k8s:openapi-gen=true
+type WorkspaceComponentSpec struct {
+	// Id of workspace that contains this component
+	WorkspaceId string `json:"workspaceId"`
+	// List of devfile components to be processed by this component
+	Components []devworkspace.Component `json:"components"`
+	// Commands from devfile, to be matched to components
+	Commands []devworkspace.Command `json:"commands,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component
-type ComponentStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+// +k8s:openapi-gen=true
+type WorkspaceComponentStatus struct {
+	// Whether the component has finished processing its spec
+	Ready bool `json:"ready"`
+	// Descriptions of processed components from spec
+	ComponentDescriptions []ComponentDescription `json:"componentDescriptions"`
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Component is the Schema for the components API
+// +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:path=components,scope=Namespaced
 type Component struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ComponentSpec   `json:"spec,omitempty"`
-	Status ComponentStatus `json:"status,omitempty"`
+	Spec   WorkspaceComponentSpec   `json:"spec,omitempty"`
+	Status WorkspaceComponentStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ComponentList contains a list of Component
 type ComponentList struct {

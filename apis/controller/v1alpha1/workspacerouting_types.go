@@ -1,47 +1,86 @@
-/*
-
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+//
+// Copyright (c) 2019-2020 Red Hat, Inc.
+// This program and the accompanying materials are made
+// available under the terms of the Eclipse Public License 2.0
+// which is available at https://www.eclipse.org/legal/epl-2.0/
+//
+// SPDX-License-Identifier: EPL-2.0
+//
+// Contributors:
+//   Red Hat, Inc. - initial API and implementation
+//
 
 package v1alpha1
 
 import (
+	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // WorkspaceRoutingSpec defines the desired state of WorkspaceRouting
+// +k8s:openapi-gen=true
 type WorkspaceRoutingSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of WorkspaceRouting. Edit WorkspaceRouting_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// WorkspaceId for the workspace being routed
+	WorkspaceId string `json:"workspaceId"`
+	// Class of the routing: this drives which Workspace Routing controller will manage this routing
+	RoutingClass WorkspaceRoutingClass `json:"routingClass,omitempty"`
+	// Routing suffix for cluster
+	RoutingSuffix string `json:"routingSuffix"`
+	// Machines to endpoints map
+	Endpoints map[string]EndpointList `json:"endpoints"`
+	// Selector that should be used by created services to point to the workspace Pod
+	PodSelector map[string]string `json:"podSelector"`
 }
+
+type WorkspaceRoutingClass string
+
+const (
+	WorkspaceRoutingDefault        WorkspaceRoutingClass = "basic"
+	WorkspaceRoutingOpenShiftOauth WorkspaceRoutingClass = "openshift-oauth"
+	WorkspaceRoutingCluster        WorkspaceRoutingClass = "cluster"
+	WorkspaceRoutingClusterTLS     WorkspaceRoutingClass = "cluster-tls"
+	WorkspaceRoutingWebTerminal    WorkspaceRoutingClass = "web-terminal"
+)
 
 // WorkspaceRoutingStatus defines the observed state of WorkspaceRouting
+// +k8s:openapi-gen=true
 type WorkspaceRoutingStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Additions to main workspace deployment
+	PodAdditions *PodAdditions `json:"podAdditions,omitempty"`
+	// Machine name to exposed endpoint map
+	ExposedEndpoints map[string]ExposedEndpointList `json:"exposedEndpoints,omitempty"`
+	// Routing reconcile phase
+	Phase WorkspaceRoutingPhase `json:"phase,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
+// Valid phases for workspacerouting
+type WorkspaceRoutingPhase string
+
+const (
+	RoutingReady     WorkspaceRoutingPhase = "Ready"
+	RoutingPreparing WorkspaceRoutingPhase = "Preparing"
+	RoutingFailed    WorkspaceRoutingPhase = "Failed"
+)
+
+type ExposedEndpoint struct {
+	// Name of the exposed endpoint
+	Name string `json:"name"`
+	// Public URL of the exposed endpoint
+	Url string `json:"url"`
+	// Attributes of the exposed endpoint
+	Attributes map[string]string `json:"attributes"`
+}
+
+type EndpointList []devworkspace.Endpoint
+
+type ExposedEndpointList []ExposedEndpoint
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // WorkspaceRouting is the Schema for the workspaceroutings API
+// +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:path=workspaceroutings,scope=Namespaced
 type WorkspaceRouting struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -50,7 +89,7 @@ type WorkspaceRouting struct {
 	Status WorkspaceRoutingStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // WorkspaceRoutingList contains a list of WorkspaceRouting
 type WorkspaceRoutingList struct {
