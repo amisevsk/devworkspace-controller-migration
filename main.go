@@ -20,6 +20,9 @@ import (
 	"flag"
 	"os"
 
+	"github.com/devfile/devworkspace-operator/controllers/controller/component"
+	"github.com/devfile/devworkspace-operator/controllers/controller/workspacerouting"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -29,7 +32,6 @@ import (
 
 	workspacev1alpha1 "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
-	controllercontroller "github.com/devfile/devworkspace-operator/controllers/controller"
 	workspacecontroller "github.com/devfile/devworkspace-operator/controllers/workspace"
 	// +kubebuilder:scaffold:imports
 )
@@ -70,7 +72,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllercontroller.ComponentReconciler{
+	if err = (&component.ComponentReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
 		Scheme: mgr.GetScheme(),
@@ -78,7 +80,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
 	}
-	if err = (&controllercontroller.WorkspaceRoutingReconciler{
+	if err = (&workspacerouting.WorkspaceRoutingReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("WorkspaceRouting"),
 		Scheme: mgr.GetScheme(),

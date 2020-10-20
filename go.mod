@@ -4,9 +4,14 @@ go 1.13
 
 require (
 	github.com/devfile/api v0.0.0-20200826083800-9e2280a95680
+	github.com/eclipse/che-go-jsonrpc v0.0.0-20200317130110-931966b891fe // indirect
+	github.com/eclipse/che-plugin-broker v3.4.0+incompatible
 	github.com/go-logr/logr v0.1.0
-	github.com/onsi/ginkgo v1.12.1
-	github.com/onsi/gomega v1.10.1
+	github.com/google/go-cmp v0.4.0
+	github.com/google/uuid v1.1.1
+	github.com/openshift/api v0.0.0-20200205133042-34f0ec8dab87
+	github.com/operator-framework/operator-sdk v0.17.0
+	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v12.0.0+incompatible
