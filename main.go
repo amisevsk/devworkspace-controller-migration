@@ -28,7 +28,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
+	workspacev1alpha1 "github.com/devfile/devworkspace-operator/apis/workspace/v1alpha1"
 	controllercontroller "github.com/devfile/devworkspace-operator/controllers/controller"
+	workspacecontroller "github.com/devfile/devworkspace-operator/controllers/workspace"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -41,6 +43,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(controllerv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(workspacev1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -81,6 +84,14 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "WorkspaceRouting")
+		os.Exit(1)
+	}
+	if err = (&workspacecontroller.DevWorkspaceReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("DevWorkspace"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "DevWorkspace")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

@@ -1,0 +1,24 @@
+# permissions for end users to edit devworkspaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: devworkspace-editor-role
+rules:
+- apiGroups:
+  - workspace.devfile.io
+  resources:
+  - devworkspaces
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - workspace.devfile.io
+  resources:
+  - devworkspaces/status
+  verbs:
+  - get

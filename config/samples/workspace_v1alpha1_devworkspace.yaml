@@ -1,0 +1,7 @@
+apiVersion: workspace.devfile.io/v1alpha1
+kind: DevWorkspace
+metadata:
+  name: devworkspace-sample
+spec:
+  # Add fields here
+  foo: bar
