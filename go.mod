@@ -3,6 +3,7 @@ module github.com/devfile/devworkspace-operator
 go 1.13
 
 require (
+	github.com/apex/log v1.9.0
 	github.com/devfile/api v0.0.0-20200826083800-9e2280a95680
 	github.com/eclipse/che-go-jsonrpc v0.0.0-20200317130110-931966b891fe // indirect
 	github.com/eclipse/che-plugin-broker v3.4.0+incompatible
@@ -21,4 +22,4 @@ require (
 // devfile/api requires v12.0.0+incompatible but this causes issues with go commands
 replace k8s.io/client-go => k8s.io/client-go v0.18.6
 
-replace github.com/devfile/api => /home/amisevsk/git/api
+replace github.com/devfile/api => github.com/amisevsk/devworkspace-api v0.0.0-20201020205654-257362dba943
