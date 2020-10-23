@@ -1,7 +1,0 @@
-apiVersion: controller.devfile.io/v1alpha1
-kind: WorkspaceRouting
-metadata:
-  name: workspacerouting-sample
-spec:
-  # Add fields here
-  foo: bar

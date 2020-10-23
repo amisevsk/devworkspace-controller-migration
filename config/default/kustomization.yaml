@@ -1,28 +1,29 @@
 # Adds namespace to all resources.
-namespace: devworkspace-operator-migration-system
+namespace: devworkspace-operator
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
 # "wordpress" becomes "alices-wordpress".
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
-namePrefix: devworkspace-operator-migration-
+namePrefix: devworkspace-controller-
 
 # Labels to add to all resources and selectors.
-#commonLabels:
-#  someName: someValue
+commonLabels:
+  app.kubernetes.io/name: devworkspace-controller
+  app.kubernetes.io/part-of: devworkspace-operator
 
 bases:
 - ../crd
-- ../rbac
-- ../manager
+- ../components/rbac
+- ../components/manager
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml
-#- ../webhook
+#- ../components/webhook
 # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'. 'WEBHOOK' components are required.
-#- ../certmanager
+#- ../components/certmanager
 # [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
-#- ../prometheus
+#- ../components/prometheus
 
 patchesStrategicMerge:
   # Protect the /metrics endpoint by putting it behind auth.

@@ -18,16 +18,15 @@
 
 SHELL := bash
 .SHELLFLAGS = -ec
-.ONESHELL:
+# .ONESHELL:
 
-NAMESPACE ?= devworkspace-controller
-IMG ?= quay.io/devfile/devworkspace-controller:next
-TOOL ?= oc
-ROUTING_SUFFIX ?= 192.168.99.100.nip.io
-PULL_POLICY ?= Always
-WEBHOOK_ENABLED ?= true
-DEFAULT_ROUTING ?= basic
-ADMIN_CTX ?= ""
+export NAMESPACE ?= devworkspace-controller
+export IMG ?= quay.io/devfile/devworkspace-controller:next
+export ROUTING_SUFFIX ?= 192.168.99.100.nip.io
+export PULL_POLICY ?= Always
+export WEBHOOK_ENABLED ?= true
+export DEFAULT_ROUTING ?= basic
+ADMIN_CTX ?= "" # TODO
 REGISTRY_ENABLED ?= true
 DEVWORKSPACE_API_VERSION ?= v1alpha1
 
@@ -36,12 +35,16 @@ INTERNAL_TMP_DIR=/tmp/devworkspace-controller
 BUMPED_KUBECONFIG=$(INTERNAL_TMP_DIR)/kubeconfig
 RELATED_IMAGES_FILE=$(INTERNAL_TMP_DIR)/environment
 
-# minikube handling
-ifeq ($(shell $(TOOL) config current-context),minikube)
-	ROUTING_SUFFIX := $(shell minikube ip).nip.io
-	TOOL := kubectl
+ifeq ($(shell kubectl api-resources --api-group='route.openshift.io' | grep -o routes),routes)
+PLATFORM := openshift
+else
+PLATFORM := kubernetes
 endif
 
+# minikube handling
+ifeq ($(shell kubectl config current-context),minikube)
+export ROUTING_SUFFIX := $(shell minikube ip).nip.io
+endif
 
 
 # Bootstrapped by Operator-SDK v1.1.0
@@ -80,7 +83,17 @@ _print_vars:
 	@echo "    DEFAULT_ROUTING=$(DEFAULT_ROUTING)"
 	@echo "    REGISTRY_ENABLED=$(REGISTRY_ENABLED)"
 	@echo "    DEVWORKSPACE_API_VERSION=$(DEVWORKSPACE_API_VERSION)"
-	@echo "    TOOL=$(TOOL)"
+
+_create_namespace:
+	kubectl create namespace $(NAMESPACE) || true
+
+_generate_related_images_env:
+	@mkdir -p $(INTERNAL_TMP_DIR)
+	cat ./config/components/manager/manager.yaml \
+		| yq -r \
+			'.spec.template.spec.containers[].env[] | select(.name | startswith("RELATED_IMAGE")) | "export \(.name)=\"$${\(.name):-\(.value)}\""' \
+		> $(RELATED_IMAGES_FILE)
+	cat $(RELATED_IMAGES_FILE)
 
 ##### Rules for dealing with devfile/api
 ### update_devworkspace_api: update version of devworkspace crds in go.mod
@@ -106,11 +119,16 @@ manager: generate fmt vet
 	go build -o bin/manager main.go
 
 ### run: Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet manifests
+run: _generate_related_images_env
+	source $(RELATED_IMAGES_FILE)
 	go run ./main.go
 
+debug: _generate_related_images_env
+	source $(RELATED_IMAGES_FILE)
+	dlv debug --listen=:2345 --headless=true --api-version=2 ./main.go --
+
 ### install: Install CRDs into a cluster
-install: manifests _kustomize
+install: manifests _kustomize _create_namespace
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 #### uninstall: Uninstall CRDs from a cluster
@@ -118,13 +136,38 @@ uninstall: manifests _kustomize
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 ### deploy: Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests _kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
+deploy: _kustomize _create_namespace deploy_registry
+	mv config/devel/config.properties config/devel/config.properties.bak
+	mv config/devel/manager_image_patch.yaml config/devel/manager_image_patch.yaml.bak
+	envsubst < config/devel/config.properties.bak > config/devel/config.properties
+	envsubst < config/devel/manager_image_patch.yaml.bak > config/devel/manager_image_patch.yaml
+	$(KUSTOMIZE) build config/devel | kubectl apply -f - || true
+	mv config/devel/config.properties.bak config/devel/config.properties
+	mv config/devel/manager_image_patch.yaml.bak config/devel/manager_image_patch.yaml
 
-### manifests Generate manifests e.g. CRD, RBAC etc.
+### restart: Restart devworkspace-controller deployment
+restart:
+	kubectl rollout restart -n $(NAMESPACE) deployment/devworkspace-controller-manager
+
+### uninstall_controller: Remove controller resources from the cluster
+uninstall_controller: _kustomize
+	kustomize build config/devel | kubectl delete --ignore-not-found -f -
+
+### deploy_registry: Deploy plugin registry
+deploy_registry: _create_namespace
+	kubectl apply -f config/registry/local -n $(NAMESPACE)
+ifeq ($(PLATFORM),kubernetes)
+	envsubst < config/registry/local/k8s/ingress.yaml | kubectl apply -n $(NAMESPACE) -f -
+else
+	kubectl apply -f config/registry/local/os -n $(NAMESPACE)
+endif
+
+### manifests: Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." \
+			output:crd:artifacts:config=config/crd/bases \
+			output:rbac:artifacts:config=config/components/rbac
+	patch/patch_crds.sh
 
 ### fmt: Run go fmt against code
 fmt:
@@ -136,15 +179,6 @@ else
 	go fmt -x ./...
 endif
 
-### fmt_license: ensure license header is set on all files
-fmt_license:
-ifneq ($(shell command -v addlicense 2> /dev/null),)
-	@echo 'addlicense -v -f license_header.txt **/*.go'
-	@addlicense -v -f license_header.txt $$(find . -name '*.go')
-else
-	$(error addlicense must be installed for this rule: go get -u github.com/google/addlicense)
-endif
-
 ### vet: Run go vet against code
 vet:
 	go vet ./...
@@ -154,8 +188,8 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 ### docker-build: Build the docker image
-docker-build: test
-	docker build . -t ${IMG}
+docker-build:
+	docker build . -t ${IMG} -f build/Dockerfile
 
 ### docker-push: Push the docker image
 docker-push:
@@ -215,7 +249,6 @@ help: Makefile
 	@echo 'Supported environment variables:'
 	@echo '    IMG                        - Image used for controller'
 	@echo '    NAMESPACE                  - Namespace to use for deploying controller'
-	@echo '    TOOL                       - CLI tool for interfacing with the cluster: kubectl or oc; if oc is used, deployment is tailored to OpenShift, otherwise Kubernetes'
 	@echo '    ROUTING_SUFFIX             - Cluster routing suffix (e.g. $$(minikube ip).nip.io, apps-crc.testing)'
 	@echo '    PULL_POLICY                - Image pull policy for controller'
 	@echo '    WEBHOOK_ENABLED            - Whether webhooks should be enabled in the deployment'
