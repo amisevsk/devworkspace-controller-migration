@@ -17,17 +17,20 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
 	"github.com/devfile/devworkspace-operator/controllers/controller/component"
 	"github.com/devfile/devworkspace-operator/controllers/controller/workspacerouting"
+	"github.com/devfile/devworkspace-operator/pkg/webhook"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	workspacev1alpha1 "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
@@ -97,6 +100,19 @@ func main() {
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
+
+	// Get a config to talk to the apiserver
+	cfg, err := config.GetConfig()
+	if err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	setupLog.Info("setting up webhooks")
+	if err := webhook.SetupWebhooks(context.Background(), cfg); err != nil {
+		setupLog.Error(err, "failed to setup webhooks")
+		os.Exit(1)
+	}
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

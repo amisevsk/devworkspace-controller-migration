@@ -22,21 +22,15 @@ import (
 	"github.com/devfile/devworkspace-operator/internal/cluster"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"fmt"
+
 	routeV1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"fmt"
 )
 
 var ControllerCfg ControllerConfig
@@ -170,7 +164,8 @@ func updateConfigMap(client client.Client, meta metav1.Object, obj runtime.Objec
 	ControllerCfg.update(configMap)
 }
 
-func WatchControllerConfig(ctr controller.Controller, mgr manager.Manager) error {
+//func WatchControllerConfig(ctr controller.Controller, mgr manager.Manager) error {
+func WatchControllerConfig(mgr manager.Manager) error {
 	customConfig := false
 	configMapName, found := os.LookupEnv(ConfigMapNameEnvVar)
 	if found && len(configMapName) > 0 {
@@ -225,27 +220,28 @@ func WatchControllerConfig(ctr controller.Controller, mgr manager.Manager) error
 
 	updateConfigMap(nonCachedClient, configMap.GetObjectMeta(), configMap)
 
-	var emptyMapper handler.ToRequestsFunc = func(obj handler.MapObject) []reconcile.Request {
-		return []reconcile.Request{}
-	}
-	err = ctr.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: emptyMapper,
-	}, predicate.Funcs{
-		UpdateFunc: func(evt event.UpdateEvent) bool {
-			updateConfigMap(mgr.GetClient(), evt.MetaNew, evt.ObjectNew)
-			return false
-		},
-		CreateFunc: func(evt event.CreateEvent) bool {
-			updateConfigMap(mgr.GetClient(), evt.Meta, evt.Object)
-			return false
-		},
-		DeleteFunc: func(evt event.DeleteEvent) bool {
-			return false
-		},
-		GenericFunc: func(evt event.GenericEvent) bool {
-			return false
-		},
-	})
+	// TODO: Hack
+	//var emptyMapper handler.ToRequestsFunc = func(obj handler.MapObject) []reconcile.Request {
+	//	return []reconcile.Request{}
+	//}
+	//err = ctr.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestsFromMapFunc{
+	//	ToRequests: emptyMapper,
+	//}, predicate.Funcs{
+	//	UpdateFunc: func(evt event.UpdateEvent) bool {
+	//		updateConfigMap(mgr.GetClient(), evt.MetaNew, evt.ObjectNew)
+	//		return false
+	//	},
+	//	CreateFunc: func(evt event.CreateEvent) bool {
+	//		updateConfigMap(mgr.GetClient(), evt.Meta, evt.Object)
+	//		return false
+	//	},
+	//	DeleteFunc: func(evt event.DeleteEvent) bool {
+	//		return false
+	//	},
+	//	GenericFunc: func(evt event.GenericEvent) bool {
+	//		return false
+	//	},
+	//})
 
 	return err
 }
