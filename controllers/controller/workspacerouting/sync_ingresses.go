@@ -29,6 +29,7 @@ import (
 
 var ingressDiffOpts = cmp.Options{
 	cmpopts.IgnoreFields(v1beta1.Ingress{}, "TypeMeta", "ObjectMeta", "Status"),
+	cmpopts.IgnoreFields(v1beta1.HTTPIngressPath{}, "PathType"),
 }
 
 func (r *WorkspaceRoutingReconciler) syncIngresses(routing *controllerv1alpha1.WorkspaceRouting, specIngresses []v1beta1.Ingress) (ok bool, clusterIngresses []v1beta1.Ingress, err error) {

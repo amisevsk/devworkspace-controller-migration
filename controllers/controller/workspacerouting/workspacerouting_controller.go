@@ -285,10 +285,12 @@ func remove(list []string, s string) []string {
 }
 
 func (r *WorkspaceRoutingReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	builder := ctrl.NewControllerManagedBy(mgr).
 		For(&controllerv1alpha1.WorkspaceRouting{}).
 		Owns(&corev1.Service{}).
-		Owns(&v1beta1.Ingress{}).
-		Owns(&routeV1.Route{}).
-		Complete(r)
+		Owns(&v1beta1.Ingress{})
+	if config.ControllerCfg.IsOpenShift() {
+		builder.Owns(&routeV1.Route{})
+	}
+	return builder.Complete(r)
 }

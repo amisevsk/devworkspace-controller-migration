@@ -23,7 +23,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/apex/log"
 	controllerv1alpha1 "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
+	"github.com/devfile/devworkspace-operator/internal/cluster"
 	"github.com/devfile/devworkspace-operator/pkg/common"
 	"github.com/devfile/devworkspace-operator/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -62,6 +64,10 @@ type DevWorkspaceReconciler struct {
 // +kubebuilder:rbac:groups=controller.devfile.io,resources=components,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=controller.devfile.io,resources=workspaceroutings/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=pods;serviceaccounts;secrets;configmaps;persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;create;watch;update;delete
+// +kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update
 
 func (r *DevWorkspaceReconciler) Reconcile(req ctrl.Request) (reconcileResult ctrl.Result, err error) {
 	_ = context.Background() // TODO Pass this around to eventual use-sites
@@ -308,6 +314,27 @@ func getWorkspaceId(instance *devworkspace.DevWorkspace) (string, error) {
 
 func (r *DevWorkspaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// TODO: Set up indexing https://book.kubebuilder.io/cronjob-tutorial/controller-implementation.html#setup
+
+	// TODO: temp value; remove configmap altogether in favor of env vars
+	config.ConfigMapReference.Namespace = "devworkspace-operator"
+
+	err := config.WatchControllerConfig(mgr)
+	if err != nil {
+		return err
+	}
+
+	// Check if we're running on OpenShift
+	isOS, err := cluster.IsOpenShift()
+	if err != nil {
+		return err
+	}
+	config.ControllerCfg.SetIsOpenShift(isOS)
+
+	err = config.ControllerCfg.Validate()
+	if err != nil {
+		log.Errorf("Controller configuration is invalid: %s", err)
+		return err
+	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&devworkspace.DevWorkspace{}).

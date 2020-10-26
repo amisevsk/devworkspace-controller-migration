@@ -168,7 +168,7 @@ func getIngressForEndpoint(endpoint devworkspace.Endpoint, meta WorkspaceMetadat
 	for k, v := range ingressAnnotations {
 		annotations[k] = v
 	}
-
+	ingressPathType := v1beta1.PathTypeImplementationSpecific
 	return v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      common.RouteName(meta.WorkspaceId, endpointName),
@@ -190,6 +190,8 @@ func getIngressForEndpoint(endpoint devworkspace.Endpoint, meta WorkspaceMetadat
 										ServiceName: common.ServiceName(meta.WorkspaceId),
 										ServicePort: targetEndpoint,
 									},
+									PathType: &ingressPathType,
+									Path:     "/",
 								},
 							},
 						},
