@@ -179,6 +179,15 @@ else
 	go fmt -x ./...
 endif
 
+### fmt_license: ensure license header is set on all files
+fmt_license:
+ifneq ($(shell command -v addlicense 2> /dev/null),)
+	@echo 'addlicense -v -f license_header.txt **/*.go'
+	@addlicense -v -f license_header.txt $$(find . -name '*.go')
+else
+	$(error addlicense must be installed for this rule: go get -u github.com/google/addlicense)
+endif
+
 ### vet: Run go vet against code
 vet:
 	go vet ./...
