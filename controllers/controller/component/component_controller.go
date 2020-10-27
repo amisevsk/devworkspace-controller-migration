@@ -65,14 +65,14 @@ type ComponentReconciler struct {
 // +kubebuilder:rbac:groups=core,resources=configmap,verbs=get;list;watch;create;update;patch;delete
 
 func (r *ComponentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background() // TODO Pass this around
+	ctx := context.Background()
 
 	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling Component")
 
 	// Fetch the Component instance
 	instance := &controllerv1alpha1.Component{}
-	err := r.Get(context.TODO(), req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -135,11 +135,11 @@ func (r *ComponentReconciler) reconcileConfigMap(instance *controllerv1alpha1.Co
 		Namespace: cm.Namespace,
 		Name:      cm.Name,
 	}
-	err = r.Get(context.TODO(), namespacedName, clusterConfigMap)
+	err = r.Get(ctx, namespacedName, clusterConfigMap)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			log.Info("Creating broker ConfigMap")
-			err := r.Create(context.TODO(), cm)
+			err := r.Create(ctx, cm)
 			return false, err
 		}
 		return false, err
@@ -149,7 +149,7 @@ func (r *ComponentReconciler) reconcileConfigMap(instance *controllerv1alpha1.Co
 		log.Info("Updating broker ConfigMap")
 		log.V(2).Info(fmt.Sprintf("Diff: %s\n", cmp.Diff(cm, clusterConfigMap, configMapDiffOpts)))
 		clusterConfigMap.Data = cm.Data
-		err := r.Update(context.TODO(), clusterConfigMap)
+		err := r.Update(ctx, clusterConfigMap)
 		return false, err
 	}
 
@@ -162,7 +162,7 @@ func (r *ComponentReconciler) reconcileStatus(instance *controllerv1alpha1.Compo
 	}
 	instance.Status.ComponentDescriptions = components
 	instance.Status.Ready = true
-	return r.Status().Update(context.TODO(), instance)
+	return r.Status().Update(ctx, instance)
 }
 
 func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {

@@ -66,14 +66,14 @@ type WorkspaceRoutingReconciler struct {
 // +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete
 
 func (r *WorkspaceRoutingReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
+	ctx := context.Background()
 
 	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling WorkspaceRouting")
 
 	// Fetch the WorkspaceRouting instance
 	instance := &controllerv1alpha1.WorkspaceRouting{}
-	err := r.Get(context.TODO(), req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -100,7 +100,7 @@ func (r *WorkspaceRoutingReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	if err != nil {
 		reqLogger.Error(err, "Could not get solver for routingClass")
 		instance.Status.Phase = controllerv1alpha1.RoutingFailed
-		statusErr := r.Status().Update(context.TODO(), instance)
+		statusErr := r.Status().Update(ctx, instance)
 		return reconcile.Result{}, statusErr
 	}
 
@@ -166,7 +166,7 @@ func (r *WorkspaceRoutingReconciler) Reconcile(req ctrl.Request) (ctrl.Result, e
 	if err != nil {
 		reqLogger.Error(err, "Could not get exposed endpoints for workspace")
 		instance.Status.Phase = controllerv1alpha1.RoutingFailed
-		statusErr := r.Status().Update(context.TODO(), instance)
+		statusErr := r.Status().Update(ctx, instance)
 		return reconcile.Result{}, statusErr
 	}
 

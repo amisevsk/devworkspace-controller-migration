@@ -11,10 +11,7 @@
 
 #### TODOS ####
 ## - Port over e2e tests.
-## - Port over local running stuff.
-## - Figure out which parts of local patching are still needed.
-## - Include getting devfile/api crds in manifests rule
-###############
+####
 
 SHELL := bash
 .SHELLFLAGS = -ec
@@ -26,7 +23,6 @@ export ROUTING_SUFFIX ?= 192.168.99.100.nip.io
 export PULL_POLICY ?= Always
 export WEBHOOK_ENABLED ?= true
 export DEFAULT_ROUTING ?= basic
-ADMIN_CTX ?= "" # TODO
 REGISTRY_ENABLED ?= true
 DEVWORKSPACE_API_VERSION ?= v1alpha1
 

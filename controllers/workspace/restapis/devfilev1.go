@@ -16,7 +16,6 @@ import (
 	"errors"
 	"strings"
 
-	//TODO
 	devworkspace "github.com/devfile/api/pkg/apis/workspaces/v1alpha1"
 	workspaceApi "github.com/devfile/devworkspace-operator/apis/controller/v1alpha1"
 	"github.com/devfile/devworkspace-operator/pkg/config"

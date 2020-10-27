@@ -82,7 +82,7 @@ type DevWorkspaceReconciler struct {
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update
 
 func (r *DevWorkspaceReconciler) Reconcile(req ctrl.Request) (reconcileResult ctrl.Result, err error) {
-	_ = context.Background() // TODO Pass this around to eventual use-sites
+	ctx := context.Background()
 	reqLogger := r.Log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling Workspace")
 	clusterAPI := provision.ClusterAPI{
@@ -93,7 +93,7 @@ func (r *DevWorkspaceReconciler) Reconcile(req ctrl.Request) (reconcileResult ct
 
 	// Fetch the Workspace instance
 	workspace := &devworkspace.DevWorkspace{}
-	err = r.Get(context.TODO(), req.NamespacedName, workspace)
+	err = r.Get(ctx, req.NamespacedName, workspace)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -117,7 +117,7 @@ func (r *DevWorkspaceReconciler) Reconcile(req ctrl.Request) (reconcileResult ct
 			return reconcile.Result{}, err
 		}
 		workspace.Status.WorkspaceId = workspaceId
-		err = r.Status().Update(context.TODO(), workspace)
+		err = r.Status().Update(ctx, workspace)
 		return reconcile.Result{Requeue: true}, err
 	}
 

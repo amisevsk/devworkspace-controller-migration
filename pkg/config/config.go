@@ -164,7 +164,6 @@ func updateConfigMap(client client.Client, meta metav1.Object, obj runtime.Objec
 	ControllerCfg.update(configMap)
 }
 
-//func WatchControllerConfig(ctr controller.Controller, mgr manager.Manager) error {
 func WatchControllerConfig(mgr manager.Manager) error {
 	customConfig := false
 	configMapName, found := os.LookupEnv(ConfigMapNameEnvVar)
@@ -220,7 +219,8 @@ func WatchControllerConfig(mgr manager.Manager) error {
 
 	updateConfigMap(nonCachedClient, configMap.GetObjectMeta(), configMap)
 
-	// TODO: Hack
+	// TODO: Workaround since we don't have a controller here; we should remove configmap and use
+	//       env vars instead.
 	//var emptyMapper handler.ToRequestsFunc = func(obj handler.MapObject) []reconcile.Request {
 	//	return []reconcile.Request{}
 	//}
